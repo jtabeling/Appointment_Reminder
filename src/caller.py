@@ -66,7 +66,8 @@ class Caller:
         auth_token: str,
         from_number: str,
         max_retries: int = 3,
-        retry_delay: int = 300
+        retry_delay: int = 300,
+        status_callback_url: Optional[str] = None
     ):
         """Initialize caller with Twilio credentials.
         
@@ -76,6 +77,7 @@ class Caller:
             from_number: Phone number to call from (Google Voice number)
             max_retries: Maximum retry attempts for failed calls
             retry_delay: Seconds to wait between retries
+            status_callback_url: URL for Twilio status callbacks (optional)
         """
         if not TWILIO_AVAILABLE:
             raise ImportError("Twilio library not installed")
@@ -85,11 +87,15 @@ class Caller:
         self.from_number = from_number
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.status_callback_url = status_callback_url
         
         # Initialize Twilio client
         self.client = TwilioClient(account_sid, auth_token)
         
-        logger.info(f"Initialized Twilio caller with number: {from_number}")
+        if status_callback_url:
+            logger.info(f"Initialized Twilio caller with number: {from_number}, status callback: {status_callback_url}")
+        else:
+            logger.info(f"Initialized Twilio caller with number: {from_number}")
     
     def normalize_phone_number(self, phone_number: str) -> str:
         """Normalize phone number to E.164 format.
@@ -148,28 +154,43 @@ class Caller:
                 # Create TwiML instructions for the call
                 twiml_url = self._generate_twiml_url(message)
                 
-                # Place the call
-                call = self.client.calls.create(
-                    to=to_number,
-                    from_=self.from_number,
-                    url=twiml_url,
-                    method='GET'
-                )
+                # Place the call with optional status callback
+                call_params = {
+                    'to': to_number,
+                    'from_': self.from_number,
+                    'url': twiml_url,
+                    'method': 'GET'
+                }
+                
+                # Add status callback if configured
+                if self.status_callback_url:
+                    call_params['status_callback'] = self.status_callback_url
+                    call_params['status_callback_event'] = ['initiated', 'ringing', 'answered', 'completed']
+                    call_params['status_callback_method'] = 'POST'
+                    logger.debug(f"Using status callback URL: {self.status_callback_url}")
+                
+                call = self.client.calls.create(**call_params)
                 
                 # Wait a moment for call to be initiated
-                time.sleep(2)
+                time.sleep(3)
                 
-                # Get call status
+                # Get call status - initial status after call is placed
                 call = self.client.calls(call.sid).fetch()
+                
+                # Store call ID for later status check
+                call_sid = call.sid
+                initial_status = call.status
+                initial_duration = float(call.duration) if call.duration else None
                 
                 result = CallResult(
                     success=True,
-                    call_id=call.sid,
-                    status=call.status,
-                    duration=float(call.duration) if call.duration else None
+                    call_id=call_sid,
+                    status=initial_status,
+                    duration=initial_duration,
+                    timestamp=datetime.now()
                 )
                 
-                logger.info(f"Call placed successfully: {call.sid}, status: {call.status}")
+                logger.info(f"Call placed successfully: {call_sid}, initial status: {initial_status}")
                 return result
                 
             except TwilioRestException as e:
@@ -230,18 +251,25 @@ class Caller:
             CallResult with current status
         """
         try:
+            logger.debug(f"Fetching status for call: {call_id}")
             call = self.client.calls(call_id).fetch()
             
+            logger.debug(f"Call {call_id} status: {call.status}, duration: {call.duration}")
+            
             result = CallResult(
-                success=call.status in ['completed', 'in-progress'],
+                success=call.status in ['completed', 'in-progress', 'answered'],
                 call_id=call.sid,
                 status=call.status,
                 duration=float(call.duration) if call.duration else None
             )
             
+            logger.info(f"Retrieved status: {call.status}, duration: {call.duration}")
             return result
             
+        except TwilioRestException as e:
+            logger.error(f"Twilio error fetching call status for {call_id}: {e}")
+            return None
         except Exception as e:
-            logger.error(f"Error fetching call status: {e}")
+            logger.error(f"Error fetching call status for {call_id}: {e}")
             return None
 

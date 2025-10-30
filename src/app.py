@@ -10,8 +10,6 @@ import logging
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config_loader import ConfigLoader
 from logger import setup_logger
 from data_processor import DataProcessor, Appointment
-from scheduler import Scheduler
 from caller import Caller, CallResult
+from batch_logger import BatchLogger
 
 
 class AppointmentReminderApp:
@@ -50,8 +48,7 @@ class AppointmentReminderApp:
         # Initialize components
         self._init_data_processor()
         self._init_caller()
-        self._init_scheduler()
-        self._init_apscheduler()
+        self._init_batch_logger()
         
         # Statistics
         self.stats = {
@@ -91,38 +88,24 @@ class AppointmentReminderApp:
         
         max_retries = self.config.get('calling.max_retries', 3)
         retry_delay = self.config.get('calling.retry_delay_seconds', 300)
+        status_callback_url = self.config.get('calling.status_callback_url')
         
         self.caller = Caller(
             account_sid=account_sid,
             auth_token=auth_token,
             from_number=phone_number,
             max_retries=max_retries,
-            retry_delay=retry_delay
+            retry_delay=retry_delay,
+            status_callback_url=status_callback_url
         )
         
         self.logger.info("Caller initialized")
     
-    def _init_scheduler(self):
-        """Initialize scheduler."""
-        reminder_hours = self.config.get('scheduling.reminder_hours_before', 24)
-        self.scheduler = Scheduler(reminder_hours_before=reminder_hours)
-        self.logger.info("Scheduler initialized")
-    
-    def _init_apscheduler(self):
-        """Initialize APScheduler for periodic checks."""
-        self.apscheduler = BackgroundScheduler()
-        check_interval = self.config.get('scheduling.check_interval_minutes', 60)
-        
-        # Schedule periodic check for due calls
-        self.apscheduler.add_job(
-            self.process_due_calls,
-            trigger=IntervalTrigger(minutes=check_interval),
-            id='process_due_calls',
-            name='Process Due Calls',
-            replace_existing=True
-        )
-        
-        self.logger.info(f"APScheduler initialized with {check_interval} minute interval")
+    def _init_batch_logger(self):
+        """Initialize batch logger."""
+        batch_log_file = self.config.get('logging.batch_log_file', 'logs/batch_call_results.csv')
+        self.batch_logger = BatchLogger(log_file=batch_log_file)
+        self.logger.info("Batch logger initialized")
     
     def load_appointments(self, file_path: str) -> List[Appointment]:
         """Load appointments from Excel file.
@@ -135,46 +118,34 @@ class AppointmentReminderApp:
         """
         self.logger.info(f"Loading appointments from: {file_path}")
         
-        call_immediately = self.config.get('scheduling.call_immediately', False)
-        
         try:
             appointments = self.data_processor.read_excel(file_path)
-            
-            if call_immediately:
-                # Don't filter - use all appointments
-                self.logger.info(f"Loaded {len(appointments)} appointments (immediate mode - using all)")
-                return appointments
-            else:
-                # Filter to upcoming appointments only
-                upcoming = self.data_processor.get_upcoming_appointments(appointments)
-                self.logger.info(f"Loaded {len(appointments)} total, {len(upcoming)} upcoming")
-                return upcoming
-            
+            self.logger.info(f"Loaded {len(appointments)} appointments")
+            return appointments
         except Exception as e:
             self.logger.error(f"Error loading appointments: {e}")
             raise
     
-    def schedule_appointments(self, appointments: List[Appointment]) -> int:
-        """Schedule calls for all appointments.
+    def place_calls(self, appointments: List[Appointment]) -> int:
+        """Place calls for all appointments immediately.
         
         Args:
-            appointments: List of appointments to schedule
+            appointments: List of appointments to call
             
         Returns:
-            Number of appointments successfully scheduled
+            Number of calls successfully placed
         """
-        call_immediately = self.config.get('scheduling.call_immediately', False)
+        self.logger.info(f"Placing {len(appointments)} calls now")
         
-        if call_immediately:
-            self.logger.info(f"Call immediately mode: Placing {len(appointments)} calls now")
-        else:
-            self.logger.info(f"Scheduling reminders for {len(appointments)} appointments")
-        
-        scheduled_count = 0
+        calls_placed = 0
         message_template = self.config.get(
             'message.message_template',
             "Hello {name}, this is an automated reminder that you have an appointment scheduled for {appointment_date} at {appointment_time}. If you need to reschedule, please contact us. Thank you."
         )
+        
+        # Track batch results for logging
+        batch_results = []
+        batch_id = datetime.now().strftime('%Y%m%d_%H%M%S')
         
         for apt in appointments:
             try:
@@ -188,159 +159,98 @@ class AppointmentReminderApp:
                     appointment_time=appointment_time
                 )
                 
-                # Create appointment ID
-                appointment_id = f"{apt.name}_{apt.appointment_datetime.isoformat()}"
-                
-                if call_immediately:
-                    # Call immediately instead of scheduling
-                    self.logger.info(f"Placing immediate call to {apt.name}")
-                    try:
-                        result = self.caller.place_call(
-                            to_number=apt.phone_number,
-                            message=message,
-                            retry=True
-                        )
-                        
-                        # Update statistics
-                        self.stats['calls_placed'] += 1
-                        if result.success:
-                            self.stats['calls_succeeded'] += 1
-                            self.logger.info(f"[OK] Call successful to {apt.name}: {result.status}")
-                        else:
-                            self.stats['calls_failed'] += 1
-                            self.logger.error(f"[FAIL] Call failed to {apt.name}: {result.error}")
-                        
-                        scheduled_count += 1
-                    except Exception as e:
-                        self.logger.error(f"Error placing call to {apt.name}: {e}")
-                else:
-                    # Schedule the call for later
-                    scheduled = self.scheduler.schedule_appointment(
-                        appointment_id=appointment_id,
-                        phone_number=apt.phone_number,
-                        name=apt.name,
+                # Place the call immediately
+                self.logger.info(f"Placing call to {apt.name}")
+                try:
+                    result = self.caller.place_call(
+                        to_number=apt.phone_number,
                         message=message,
-                        appointment_datetime=apt.appointment_datetime,
-                        callback=lambda apt_id=appointment_id: self._place_reminder_call(apt_id)
+                        retry=True
                     )
                     
-                    if scheduled:
-                        scheduled_count += 1
-                        self.logger.debug(f"Scheduled reminder for {apt.name}")
+                    # Update statistics
+                    self.stats['calls_placed'] += 1
+                    if result.success:
+                        self.stats['calls_succeeded'] += 1
+                        self.logger.info(f"[OK] Call successful to {apt.name}: {result.status}")
+                    else:
+                        self.stats['calls_failed'] += 1
+                        self.logger.error(f"[FAIL] Call failed to {apt.name}: {result.error}")
+                    
+                    # Track result for batch logging
+                    batch_results.append({
+                        'name': apt.name,
+                        'phone_number': apt.phone_number,
+                        'appointment_date': apt.appointment_datetime.isoformat(),
+                        'answered': self._is_call_answered(result.status),
+                        'status': result.status,
+                        'duration': result.duration,
+                        'call_id': result.call_id,
+                        'error': result.error
+                    })
+                    
+                    calls_placed += 1
+                except Exception as e:
+                    self.logger.error(f"Error placing call to {apt.name}: {e}")
+                    # Track error result
+                    batch_results.append({
+                        'name': apt.name,
+                        'phone_number': apt.phone_number,
+                        'appointment_date': apt.appointment_datetime.isoformat(),
+                        'answered': False,
+                        'status': 'error',
+                        'duration': 0,
+                        'call_id': None,
+                        'error': str(e)
+                    })
                 
             except Exception as e:
                 self.logger.error(f"Error processing appointment for {apt.name}: {e}")
         
-        if call_immediately:
-            self.logger.info(f"Placed {scheduled_count} immediate calls")
-        else:
-            self.logger.info(f"Scheduled {scheduled_count} reminder calls")
-        return scheduled_count
+        # Wait for calls to complete, then fetch final status
+        if batch_results:
+            self.logger.info(f"Waiting for calls to complete before logging final results...")
+            time.sleep(10)  # Wait 10 seconds for calls to potentially complete
+            
+            # Update results with final status
+            for result in batch_results:
+                if result.get('call_id') and not result.get('error'):
+                    try:
+                        self.logger.info(f"Fetching final status for {result['name']}: call_id {result['call_id']}")
+                        final_status = self.caller.get_call_status(result['call_id'])
+                        if final_status:
+                            old_status = result['status']
+                            result['status'] = final_status.status
+                            result['duration'] = final_status.duration
+                            result['answered'] = self._is_call_answered(final_status.status)
+                            self.logger.info(f"Updated {result['name']}: {old_status} -> {final_status.status}, duration: {final_status.duration}s")
+                        else:
+                            self.logger.warning(f"Could not fetch final status for {result['name']} - returned None")
+                    except Exception as e:
+                        self.logger.error(f"Error fetching final status for {result['name']}: {e}")
+            
+            # Log batch results
+            self.batch_logger.log_batch(batch_id, batch_results)
+            self.logger.info(f"Logged batch {batch_id} with {len(batch_results)} call results")
+        
+        self.logger.info(f"Placed {calls_placed} calls")
+        return calls_placed
     
-    def _place_reminder_call(self, appointment_id: str) -> CallResult:
-        """Place a reminder call (callback for scheduled calls).
+    def _is_call_answered(self, status: Optional[str]) -> bool:
+        """Determine if a call was answered based on status.
         
         Args:
-            appointment_id: Unique appointment identifier
+            status: Call status from Twilio
             
         Returns:
-            CallResult object
+            True if answered, False otherwise
         """
-        scheduled_call = self.scheduler.get_scheduled_call(appointment_id)
-        if not scheduled_call:
-            self.logger.error(f"Could not find scheduled call for {appointment_id}")
-            return CallResult(success=False, error="Scheduled call not found")
+        if not status:
+            return False
         
-        self.logger.info(f"Placing call to {scheduled_call.name} at {scheduled_call.phone_number}")
-        
-        # Place the call
-        result = self.caller.place_call(
-            to_number=scheduled_call.phone_number,
-            message=scheduled_call.message,
-            retry=True
-        )
-        
-        # Update statistics
-        self.stats['calls_placed'] += 1
-        if result.success:
-            self.stats['calls_succeeded'] += 1
-        else:
-            self.stats['calls_failed'] += 1
-        
-        # Log result
-        if result.success:
-            self.logger.info(
-                f"✓ Call successful to {scheduled_call.name}: {result.status}"
-            )
-        else:
-            self.logger.error(
-                f"✗ Call failed to {scheduled_call.name}: {result.error}"
-            )
-        
-        # Remove from scheduler after processing
-        self.scheduler.remove_call(appointment_id)
-        
-        return result
-    
-    def process_due_calls(self):
-        """Process all due calls (called periodically by APScheduler)."""
-        self.logger.debug("Checking for due calls...")
-        
-        due_calls = self.scheduler.get_due_calls()
-        
-        if not due_calls:
-            self.logger.debug("No calls are due")
-            return
-        
-        self.logger.info(f"Processing {len(due_calls)} due calls")
-        
-        for scheduled_call in due_calls:
-            try:
-                self._place_reminder_call(scheduled_call.appointment_id)
-            except Exception as e:
-                self.logger.error(f"Error processing call for {scheduled_call.name}: {e}")
-    
-    def start(self):
-        """Start the application."""
-        self.logger.info("Starting appointment reminder system...")
-        
-        # Start APScheduler
-        self.apscheduler.start()
-        self.logger.info("APScheduler started")
-        
-        # Process any immediately due calls
-        self.process_due_calls()
-        
-        self.logger.info("Application started successfully")
-        self.print_status()
-    
-    def stop(self):
-        """Stop the application."""
-        self.logger.info("Stopping appointment reminder system...")
-        
-        if self.apscheduler.running:
-            self.apscheduler.shutdown()
-            self.logger.info("APScheduler stopped")
-        
-        self.print_statistics()
-        self.logger.info("Application stopped")
-    
-    def print_status(self):
-        """Print current status."""
-        print("\n" + "=" * 60)
-        print("APPOINTMENT REMINDER SYSTEM - STATUS")
-        print("=" * 60)
-        print(f"Total Scheduled Calls: {self.scheduler.count()}")
-        
-        upcoming = self.scheduler.get_upcoming_calls(limit=5)
-        if upcoming:
-            print("\nNext 5 Scheduled Calls:")
-            for call in upcoming:
-                print(f"  • {call.name}: {call.call_time.strftime('%Y-%m-%d %H:%M')}")
-        else:
-            print("\nNo upcoming calls scheduled")
-        
-        print("=" * 60 + "\n")
+        # Twilio call statuses that indicate answered
+        answered_statuses = ['completed', 'answered', 'in-progress']
+        return any(status.lower() in answered_statuses for answered_status in answered_statuses)
     
     def print_statistics(self):
         """Print statistics."""
@@ -353,8 +263,8 @@ class AppointmentReminderApp:
         print(f"Appointments Processed: {self.stats['appointments_processed']}")
         print("=" * 60 + "\n")
     
-    def run_interactive(self, excel_file: str):
-        """Run application interactively with immediate processing.
+    def run(self, excel_file: str):
+        """Run application with Excel file.
         
         Args:
             excel_file: Path to Excel file with appointments
@@ -364,31 +274,18 @@ class AppointmentReminderApp:
             appointments = self.load_appointments(excel_file)
             
             if not appointments:
-                self.logger.warning("No upcoming appointments found")
+                self.logger.warning("No appointments found")
                 return
             
-            # Schedule them
-            scheduled_count = self.schedule_appointments(appointments)
-            self.stats['appointments_processed'] = scheduled_count
+            # Place calls immediately
+            calls_placed = self.place_calls(appointments)
+            self.stats['appointments_processed'] = calls_placed
             
-            self.print_status()
-            
-            # Keep running to process calls as they become due
-            self.logger.info("Waiting for scheduled reminder times...")
-            print("\nPress Ctrl+C to stop...")
-            
-            try:
-                while True:
-                    time.sleep(60)  # Check every minute
-                    self.process_due_calls()
-            except KeyboardInterrupt:
-                self.logger.info("Received keyboard interrupt")
+            self.print_statistics()
             
         except Exception as e:
-            self.logger.error(f"Error in interactive mode: {e}", exc_info=True)
+            self.logger.error(f"Error in run: {e}", exc_info=True)
             raise
-        finally:
-            self.stop()
 
 
 def main():
@@ -396,7 +293,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Appointment Reminder System - Automated reminder calls via Google Voice"
+        description="Appointment Reminder System - Automated reminder calls via Twilio"
     )
     parser.add_argument(
         'excel_file',
@@ -411,33 +308,22 @@ def main():
     
     args = parser.parse_args()
     
+    if not args.excel_file:
+        print("Error: Excel file is required")
+        parser.print_help()
+        sys.exit(1)
+    
     # Create app
     app = AppointmentReminderApp(config_path=args.config)
     
     try:
-        app.start()
-        
-        # If Excel file provided, process it
-        if args.excel_file:
-            app.run_interactive(args.excel_file)
-        else:
-            # Just run the scheduler
-            print("\nNo Excel file provided. Running scheduler only...")
-            print("Press Ctrl+C to stop...")
-            
-            try:
-                while True:
-                    time.sleep(60)
-            except KeyboardInterrupt:
-                pass
-        
+        app.run(args.excel_file)
     except Exception as e:
         app.logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
     finally:
-        app.stop()
+        app.logger.info("Application completed")
 
 
 if __name__ == '__main__':
     main()
-

@@ -1,17 +1,6 @@
 # Appointment Reminder Configuration
 
-# Scheduling Settings
-scheduling:
-  # Hours before appointment to place reminder call
-  reminder_hours_before: 24
-  # Time zone for appointments (e.g., "America/New_York")
-  timezone: "America/New_York"
-  # Check for new appointments every N minutes
-  check_interval_minutes: 60
-  # Call immediately when app starts (ignore scheduled times)
-  call_immediately: true
-
-# Google Voice / Twilio Settings
+# Twilio Settings
 calling:
   # Retry attempts for failed calls
   max_retries: 3
@@ -21,6 +10,9 @@ calling:
   call_timeout_seconds: 60
   # Enable voicemail detection
   detect_voicemail: true
+  # Status callback URL for real-time updates (optional, requires ngrok or server)
+  # Example: "https://abc123.ngrok.io/status"
+  status_callback_url: null
 
 # Excel File Settings
 data:
@@ -39,6 +31,8 @@ data:
 logging:
   # Log file path
   log_file: "logs/appointment_reminder.log"
+  # Batch call results log file
+  batch_log_file: "logs/batch_call_results.csv"
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_level: "INFO"
   # Maximum log file size in bytes before rotation
