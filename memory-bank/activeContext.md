@@ -1,48 +1,59 @@
 # Active Context
 
 ## Current Focus
-Project 100% complete! Fully functional, tested, and deployed to GitHub.
+Major refactoring complete: Removed all scheduling, simplified to immediate call mode only. Added comprehensive batch logging with CSV export.
 
 ## Recent Changes
 - ✅ Built complete Python application with all modules
 - ✅ Implemented Excel file processing with validation
-- ✅ Created Twilio/Google Voice integration with retry logic
+- ✅ Created Twilio integration with retry logic
 - ✅ Configured TwiML Function endpoint successfully
-- ✅ Implemented immediate call mode
 - ✅ Tested with real calls - working perfectly
-- ✅ Built scheduler with APScheduler for periodic checks
-- ✅ Added comprehensive logging and error handling
+- ❌ **REMOVED**: Scheduler with APScheduler
+- ❌ **REMOVED**: Future-dated call scheduling
+- ❌ **REMOVED**: Background processes and waiting modes
+- ✅ **ADDED**: Batch logging to CSV with full call details
+- ✅ **ADDED**: Status callback support (optional)
+- ✅ **ADDED**: Final status tracking
+- ✅ **ADDED**: Update utility script
 - ✅ Created configuration management system
-- ✅ Wrote complete documentation (20+ files)
+- ✅ Wrote complete documentation (30+ files)
 - ✅ Added sample data generator
 - ✅ Created and pushed to GitHub repository
 - ✅ Secured all credentials and sensitive data
+- ✅ Created "remove-scheduler" branch with all changes
 
 ## Current State
-Project is **PRODUCTION READY**:
-- All core modules implemented, tested, and working
-- TwiML Function endpoint configured
-- Real calls tested successfully
-- Configuration system in place
+Project is **REFACTORED FOR SIMPLICITY**:
+- All calls placed immediately on launch (no scheduling)
+- Batch logging to CSV with full details (name, number, answered, duration, status, call_id)
+- Status tracking with 10-second wait + final fetch
+- Configuration simplified (removed scheduling section)
 - Complete documentation available
 - GitHub repository active at jtabeling/Appointment_Reminder
+- Branch "remove-scheduler" ready for merge
 - All credentials protected
-- Immediate call mode functional
 - Ready for immediate production use
+
+## Next Steps (Immediate)
+1. **Review branch**: remove-scheduler ready for PR
+2. **Merge to main**: After review approval
+3. **Update README**: Reflect simplified workflow
 
 ## Next Steps (Optional Enhancements)
 1. **Deploy as Windows service** for automated operation
 2. **Add monitoring dashboard** for call tracking
-3. **Implement batch processing** for large volumes
-4. **Add email/SMS fallback** options
+3. **Implement email/SMS fallback** options
+4. **Add status callback server** deployment guide
 
 ## Active Decisions
 - **Google Voice Integration**: Using Twilio as primary option (successfully working)
 - **TwiML Endpoint**: Using Twilio Functions (configured and tested)
-- **Scheduling**: Using APScheduler for robust task scheduling
-- **Call Timing**: Default to 24 hours before appointment, with immediate mode option
+- **Scheduling**: REMOVED - All calls immediate only
+- **Call Timing**: IMMEDIATE - No scheduling, calls placed on launch
 - **File Format**: Support both .xls and .xlsx formats
-- **Call Mode**: Immediate mode implemented for testing and quick reminders
+- **Call Mode**: Simplified to immediate only
+- **Logging**: Batch CSV export with full call details
 
 ## Considerations
 - Need to handle time zones properly
@@ -60,4 +71,8 @@ Project is **PRODUCTION READY**:
 6. ✅ Complete documentation created
 7. ✅ GitHub repository published
 8. ✅ All credentials secured
+9. ✅ Scheduler removed for simplicity
+10. ✅ Batch logging with CSV export added
+11. ✅ Status callback support added
+12. ✅ Branch created and pushed to GitHub
 

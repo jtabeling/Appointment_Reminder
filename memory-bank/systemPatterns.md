@@ -4,15 +4,15 @@
 The system follows a modular architecture with clear separation of concerns:
 
 1. **Data Processor**: Handles Excel file reading and validation
-2. **Caller**: Manages Google Voice integration and call placement
-3. **Scheduler**: Coordinates timing of reminder calls
+2. **Caller**: Manages Twilio integration and call placement
+3. **Batch Logger**: Logs all call results to CSV
 4. **Application**: Main entry point and orchestration
 
 ## Design Patterns
 
 ### Data Flow
 ```
-Excel File → Data Processor → Appointment Queue → (Immediate/Scheduled) → Caller → TwiML Function → Twilio → Phone
+Excel File → Data Processor → Appointments → Immediate Call → TwiML Function → Twilio → Phone → CSV Log
 ```
 
 ### Error Handling
@@ -30,6 +30,7 @@ Excel File → Data Processor → Appointment Queue → (Immediate/Scheduled) �
 - Separate log files for different components
 - Timestamped entries with severity levels
 - Rotating logs to prevent disk space issues
+- Batch CSV export with full call details
 
 ## Key Components
 
@@ -45,17 +46,20 @@ Excel File → Data Processor → Appointment Queue → (Immediate/Scheduled) �
 - Uses TwiML Function for dynamic messages
 - Handles call outcomes (answered, voicemail, failed)
 - Retries on transient errors
-- Supports both immediate and scheduled modes
+- Supports immediate call mode only
+- Optional status callback support
 
-### Scheduler Class
-- Manages call timing
-- Calculates reminder times (e.g., 24h before appointment)
-- Handles time zone conversions
-- Queues calls for execution
+### BatchLogger Class
+- Logs all call results to CSV
+- Tracks call outcomes (answered, duration, status)
+- Formatted output for easy analysis
+- Timestamp and batch tracking
 
 ### App Class
 - Coordinates all components
 - Loads configuration
 - Initializes modules
+- Places all calls immediately on launch
 - Provides CLI interface
+- Exports batch results to CSV
 

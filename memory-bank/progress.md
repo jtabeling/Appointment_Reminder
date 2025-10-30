@@ -5,26 +5,29 @@
 - ✅ Excel file reader (DataProcessor) - reads .xls/.xlsx files
 - ✅ Twilio/Google Voice integration (Caller module)
 - ✅ TwiML Function endpoint configured and working
-- ✅ Scheduler system with APScheduler
+- ✅ Batch logging to CSV with full call details
+- ✅ Status callback support (optional)
+- ✅ Status tracking and final fetch
 - ✅ Comprehensive logging with rotation
 - ✅ Configuration management (YAML + env vars)
 - ✅ Error handling throughout
-- ✅ Complete user documentation (20+ files)
+- ✅ Complete user documentation (30+ files)
 - ✅ Sample data generation
-- ✅ Immediate call mode implemented
 - ✅ Real-world testing completed
 - ✅ GitHub repository created and pushed
 - ✅ All credentials secured and protected
+- ✅ Branch "remove-scheduler" created
 
 ## What's Left to Build
+- [ ] Merge "remove-scheduler" branch to main
+- [ ] Update main README for simplified workflow
 - [ ] Production deployment as Windows service
 - [ ] Advanced monitoring/alerting dashboard
-- [ ] Batch processing capabilities
 - [ ] Email/SMS fallback options
 
 ## Current Status
-**Phase**: Complete and Production Ready
-**Status**: Fully functional, tested, and deployed to GitHub
+**Phase**: Refactored for Simplicity
+**Status**: Scheduling removed, immediate call mode only, batch logging active
 
 ## Known Issues
 - None - all issues resolved
@@ -40,19 +43,22 @@
 - ✅ Built complete application with all core modules
 - ✅ Implemented Excel file processing with validation
 - ✅ Created Twilio calling integration with retry logic
-- ✅ Built scheduler with APScheduler for periodic checks
 - ✅ Added comprehensive logging system
 - ✅ Created configuration loader (YAML + env vars)
 - ✅ Built main application entry point
 - ✅ Implemented error handling and phone validation
-- ✅ Created complete documentation (20+ files)
+- ✅ Created complete documentation (30+ files)
 - ✅ Added sample data generator
 - ✅ Created .gitignore and project structure
 - ✅ **Set up TwiML Function endpoint with Twilio**
-- ✅ **Implemented immediate call mode**
 - ✅ **Tested with real calls successfully**
 - ✅ **Created GitHub repository**
 - ✅ **Pushed to GitHub (jtabeling/Appointment_Reminder)**
 - ✅ **Secured all credentials and sensitive data**
+- ✅ **Removed scheduler for simplicity**
+- ✅ **Added batch logging with CSV export**
+- ✅ **Added status callback support**
+- ✅ **Created "remove-scheduler" branch**
+- ✅ **Removed APScheduler dependency**
 - ✅ **All features tested and working**
 
