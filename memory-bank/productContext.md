@@ -16,14 +16,19 @@ Tax offices need to reduce no-shows by sending automated appointment reminders t
 ## Key Features
 - Bulk processing of appointments from Excel
 - Automated scheduling of reminder calls
-- Google Voice integration for placing calls
+- Twilio/Voice integration for placing calls
+- Custom TwiML messages with appointment details
+- Immediate call mode for instant reminders
 - Detailed logging and reporting
 - Error recovery and retry logic
+- Production ready deployment
 
 ## Workflow
 1. User prepares Excel file with appointments
 2. User runs the application
 3. Application reads appointments and schedules calls
-4. Calls are placed automatically at designated times
-5. Results are logged for review
+4. Calls are placed automatically (immediate or scheduled)
+5. Custom messages delivered via TwiML Function
+6. Results are logged for review
+7. GitHub repository for version control and collaboration
 

@@ -12,7 +12,7 @@ The system follows a modular architecture with clear separation of concerns:
 
 ### Data Flow
 ```
-Excel File → Data Processor → Appointment Queue → Scheduler → Caller → Logs
+Excel File → Data Processor → Appointment Queue → (Immediate/Scheduled) → Caller → TwiML Function → Twilio → Phone
 ```
 
 ### Error Handling
@@ -40,10 +40,12 @@ Excel File → Data Processor → Appointment Queue → Scheduler → Caller →
 - Returns structured appointment data
 
 ### Caller Class
-- Authenticates with Google Voice
-- Places phone calls
+- Authenticates with Twilio API
+- Places phone calls via Twilio
+- Uses TwiML Function for dynamic messages
 - Handles call outcomes (answered, voicemail, failed)
 - Retries on transient errors
+- Supports both immediate and scheduled modes
 
 ### Scheduler Class
 - Manages call timing
