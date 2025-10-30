@@ -1,0 +1,11 @@
+# Google Voice / Twilio Configuration
+# Copy the contents of this file to a new file named .env in the root directory
+
+# Twilio Account SID (recommended for reliable API)
+TWILIO_ACCOUNT_SID=your_account_sid_here
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+1234567890  # Your Google Voice number formatted with country code
+
+# Application Settings
+DEBUG=false
+

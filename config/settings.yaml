@@ -1,0 +1,54 @@
+# Appointment Reminder Configuration
+
+# Scheduling Settings
+scheduling:
+  # Hours before appointment to place reminder call
+  reminder_hours_before: 24
+  # Time zone for appointments (e.g., "America/New_York")
+  timezone: "America/New_York"
+  # Check for new appointments every N minutes
+  check_interval_minutes: 60
+  # Call immediately when app starts (ignore scheduled times)
+  call_immediately: true
+
+# Google Voice / Twilio Settings
+calling:
+  # Retry attempts for failed calls
+  max_retries: 3
+  # Seconds to wait between retries
+  retry_delay_seconds: 300
+  # Call duration timeout in seconds
+  call_timeout_seconds: 60
+  # Enable voicemail detection
+  detect_voicemail: true
+
+# Excel File Settings
+data:
+  # Required column names
+  required_columns:
+    - name
+    - phone_number
+    - email
+    - appointment_date
+  # Date format in Excel files (e.g., "%Y-%m-%d %H:%M")
+  date_format: "%Y-%m-%d %H:%M"
+  # Default date format if cannot parse
+  fallback_date_format: "%m/%d/%Y %H:%M"
+
+# Logging Settings
+logging:
+  # Log file path
+  log_file: "logs/appointment_reminder.log"
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_level: "INFO"
+  # Maximum log file size in bytes before rotation
+  max_log_size: 10485760  # 10 MB
+  # Number of backup log files to keep
+  backup_count: 5
+
+# Message Content
+message:
+  # Text-to-speech message template
+  # {name}, {appointment_date}, {appointment_time} will be replaced
+  message_template: "Hello {name}, this is an automated reminder that you have an appointment scheduled for {appointment_date} at {appointment_time}. If you need to reschedule, please contact us. Thank you."
+
