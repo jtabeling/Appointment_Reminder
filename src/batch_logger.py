@@ -43,6 +43,7 @@ class BatchLogger:
                     'call_duration_seconds',
                     'call_duration_formatted',
                     'call_id',
+                    'user_response',
                     'error_message'
                 ])
             logger.info(f"Initialized batch log file: {self.log_file}")
@@ -65,6 +66,7 @@ class BatchLogger:
                 - status: Call status from Twilio
                 - duration: Duration in seconds
                 - call_id: Twilio call ID
+                - user_response: User response ('confirmed', 'cancelled', or empty)
                 - error: Error message if any
         """
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -89,6 +91,7 @@ class BatchLogger:
                     duration_seconds,
                     duration_formatted,
                     result.get('call_id', ''),
+                    result.get('user_response', ''),  # 'confirmed', 'cancelled', or empty
                     result.get('error', '')
                 ])
         

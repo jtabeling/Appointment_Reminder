@@ -67,7 +67,8 @@ class Caller:
         from_number: str,
         max_retries: int = 3,
         retry_delay: int = 300,
-        status_callback_url: Optional[str] = None
+        status_callback_url: Optional[str] = None,
+        webhook_url: Optional[str] = None
     ):
         """Initialize caller with Twilio credentials.
         
@@ -88,11 +89,14 @@ class Caller:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.status_callback_url = status_callback_url
+        self.webhook_url = webhook_url
         
         # Initialize Twilio client
         self.client = TwilioClient(account_sid, auth_token)
         
-        if status_callback_url:
+        if webhook_url:
+            logger.info(f"Initialized Twilio caller with number: {from_number}, interactive webhook: {webhook_url}")
+        elif status_callback_url:
             logger.info(f"Initialized Twilio caller with number: {from_number}, status callback: {status_callback_url}")
         else:
             logger.info(f"Initialized Twilio caller with number: {from_number}")
@@ -152,7 +156,7 @@ class Caller:
         while attempt <= self.max_retries:
             try:
                 # Create TwiML instructions for the call
-                twiml_url = self._generate_twiml_url(message)
+                twiml_url = self._generate_twiml_url(message, self.webhook_url)
                 
                 # Place the call with optional status callback
                 call_params = {
@@ -218,14 +222,14 @@ class Caller:
         logger.error(f"Failed to place call to {to_number} after {attempt + 1} attempts")
         return result
     
-    def _generate_twiml_url(self, message: str) -> str:
-        """Generate TwiML URL for text-to-speech.
-        
-        Note: For production, you should host your own TwiML endpoint using
-        the TwiMLServer class or use Twilio Functions.
+    def _generate_twiml_url(self, message: str, webhook_url: Optional[str] = None) -> str:
+        """Generate TwiML URL for text-to-speech with interactive confirmation.
         
         Args:
             message: Message to speak
+            webhook_url: Optional webhook URL for interactive responses (Flask server)
+                        If provided, uses interactive webhook with Gather verb
+                        If None, falls back to Twilio Function
             
         Returns:
             URL with TwiML instructions
@@ -233,10 +237,18 @@ class Caller:
         # URL encode the message
         encoded_message = urllib.parse.quote(message)
         
-        # Using Twilio Function endpoint for appointment reminders
-        twiml_url = f"https://appointmentreminder-1291.twil.io/path_1?message={encoded_message}"
+        # If webhook URL is provided, use it for interactive confirmation
+        if webhook_url:
+            # Ensure webhook URL ends with /voice endpoint
+            if not webhook_url.endswith('/voice'):
+                webhook_url = webhook_url.rstrip('/') + '/voice'
+            twiml_url = f"{webhook_url}?message={encoded_message}"
+            logger.info(f"Using interactive webhook: {twiml_url}")
+        else:
+            # Fallback to Twilio Function endpoint
+            twiml_url = f"https://appointmentreminder-1291.twil.io/path_1?message={encoded_message}"
+            logger.info(f"Using Twilio Function (non-interactive): {twiml_url}")
         
-        logger.info(f"Using Twilio Function: {twiml_url}")
         logger.debug(f"Message: {message[:100]}...")
         
         return twiml_url

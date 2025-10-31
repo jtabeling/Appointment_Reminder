@@ -89,6 +89,7 @@ class AppointmentReminderApp:
         max_retries = self.config.get('calling.max_retries', 3)
         retry_delay = self.config.get('calling.retry_delay_seconds', 300)
         status_callback_url = self.config.get('calling.status_callback_url')
+        webhook_url = self.config.get('calling.webhook_url')
         
         self.caller = Caller(
             account_sid=account_sid,
@@ -96,8 +97,11 @@ class AppointmentReminderApp:
             from_number=phone_number,
             max_retries=max_retries,
             retry_delay=retry_delay,
-            status_callback_url=status_callback_url
+            status_callback_url=status_callback_url,
+            webhook_url=webhook_url
         )
+        if webhook_url:
+            self.logger.info(f"Configured interactive webhook: {webhook_url}")
         
         self.logger.info("Caller initialized")
     
@@ -181,6 +185,19 @@ class AppointmentReminderApp:
                         self.stats['calls_failed'] += 1
                         self.logger.error(f"[FAIL] Call failed to {apt.name}: {result.error}")
                     
+                    # Try to get user response from webhook server if available
+                    user_response = ''
+                    if result.call_id and self.caller.webhook_url:
+                        try:
+                            from webhook_server import get_appointment_response
+                            response_data = get_appointment_response(result.call_id)
+                            if response_data:
+                                user_response = response_data.get('response', '')
+                                if user_response:
+                                    self.logger.info(f"User response for {apt.name}: {user_response}")
+                        except (ImportError, Exception) as e:
+                            self.logger.debug(f"Could not fetch user response: {e}")
+                    
                     # Track result for batch logging
                     batch_results.append({
                         'name': apt.name,
@@ -191,6 +208,7 @@ class AppointmentReminderApp:
                         'status': result.status,
                         'duration': result.duration,
                         'call_id': result.call_id,
+                        'user_response': user_response,
                         'error': result.error
                     })
                     
@@ -207,6 +225,7 @@ class AppointmentReminderApp:
                         'status': 'error',
                         'duration': 0,
                         'call_id': None,
+                        'user_response': '',
                         'error': str(e)
                     })
                 
@@ -216,9 +235,11 @@ class AppointmentReminderApp:
         # Wait for calls to complete, then fetch final status
         if batch_results:
             self.logger.info(f"Waiting for calls to complete before logging final results...")
-            time.sleep(10)  # Wait 10 seconds for calls to potentially complete
+            wait_time = 30 if self.caller.webhook_url else 10  # Longer wait if using interactive webhook
+            self.logger.info(f"Waiting {wait_time} seconds (webhook: {'enabled' if self.caller.webhook_url else 'disabled'})")
+            time.sleep(wait_time)  # Wait for calls to complete and user to respond
             
-            # Update results with final status
+            # Update results with final status and user responses
             for result in batch_results:
                 if result.get('call_id') and not result.get('error'):
                     try:
@@ -232,6 +253,29 @@ class AppointmentReminderApp:
                             self.logger.info(f"Updated {result['name']}: {old_status} -> {final_status.status}, duration: {final_status.duration}s")
                         else:
                             self.logger.warning(f"Could not fetch final status for {result['name']} - returned None")
+                        
+                        # Try to get user response if webhook is configured
+                        if self.caller.webhook_url:
+                            self.logger.debug(f"Webhook configured, attempting to fetch user response for {result['name']} (call_id: {result['call_id']})")
+                            try:
+                                import sys
+                                from pathlib import Path
+                                sys.path.insert(0, str(Path(__file__).parent))
+                                from webhook_server import get_appointment_response
+                                response_data = get_appointment_response(result['call_id'])
+                                if response_data:
+                                    user_response = response_data.get('response', '')
+                                    if user_response:
+                                        result['user_response'] = user_response
+                                        self.logger.info(f"Updated {result['name']} user response: {user_response}")
+                                    else:
+                                        self.logger.debug(f"No user response found yet for {result['name']} (call_id: {result['call_id']})")
+                                else:
+                                    self.logger.debug(f"No response data found for {result['name']} (call_id: {result['call_id']})")
+                            except (ImportError, Exception) as e:
+                                self.logger.warning(f"Could not fetch user response for {result['name']}: {e}")
+                        else:
+                            self.logger.debug(f"No webhook configured, skipping user response fetch for {result['name']}")
                     except Exception as e:
                         self.logger.error(f"Error fetching final status for {result['name']}: {e}")
             

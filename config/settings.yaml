@@ -13,6 +13,11 @@ calling:
   # Status callback URL for real-time updates (optional, requires ngrok or server)
   # Example: "https://abc123.ngrok.io/status"
   status_callback_url: null
+  # Webhook URL for interactive appointment confirmation (optional)
+  # Set up Flask webhook server (see src/webhook_server.py) and use ngrok or deploy
+  # Example: "https://abc123.ngrok.io" (will automatically use /voice endpoint)
+  # If set, enables interactive prompts: Press 1 to confirm, 2 to cancel/reschedule
+  webhook_url: "https://umbellated-subgelatinously-faith.ngrok-free.dev"
 
 # Excel File Settings
 data:
