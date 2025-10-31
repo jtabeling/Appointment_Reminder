@@ -11,19 +11,22 @@ sample_appointments = [
         'name': 'John Doe',
         'phone_number': '555-123-4567',
         'email': 'john.doe@example.com',
-        'appointment_date': datetime.now() + timedelta(days=1)  # Tomorrow
+        'appointment_date': datetime.now() + timedelta(days=1),  # Tomorrow
+        'location': 'Main Office'
     },
     {
         'name': 'Jane Smith',
         'phone_number': '555-987-6543',
         'email': 'jane.smith@example.com',
-        'appointment_date': datetime.now() + timedelta(days=2)  # Day after tomorrow
+        'appointment_date': datetime.now() + timedelta(days=2),  # Day after tomorrow
+        'location': 'Downtown Branch'
     },
     {
         'name': 'Bob Johnson',
         'phone_number': '(555) 456-7890',
         'email': 'bob.johnson@example.com',
-        'appointment_date': datetime.now() + timedelta(days=3)
+        'appointment_date': datetime.now() + timedelta(days=3),
+        'location': 'Main Office'
     },
 ]
 

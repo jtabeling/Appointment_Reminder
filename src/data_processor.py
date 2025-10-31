@@ -21,7 +21,8 @@ class Appointment:
         phone_number: str,
         email: str,
         appointment_datetime: datetime,
-        row_index: Optional[int] = None
+        row_index: Optional[int] = None,
+        location: Optional[str] = None
     ):
         """Initialize appointment.
         
@@ -31,12 +32,14 @@ class Appointment:
             email: Contact email address
             appointment_datetime: Date and time of appointment
             row_index: Original row number in Excel file (for tracking)
+            location: Appointment location (optional)
         """
         self.name = name
         self.phone_number = phone_number
         self.email = email
         self.appointment_datetime = appointment_datetime
         self.row_index = row_index
+        self.location = location
     
     def __repr__(self) -> str:
         return f"Appointment(name={self.name}, datetime={self.appointment_datetime})"
@@ -140,6 +143,11 @@ class DataProcessor:
             phone_number = str(row['phone_number']).strip()
             email = str(row['email']).strip()
             
+            # Extract location (optional field)
+            location = None
+            if 'location' in row and pd.notna(row['location']):
+                location = str(row['location']).strip()
+            
             # Parse appointment date
             appointment_datetime = self._parse_datetime(row['appointment_date'], row_index)
             
@@ -157,7 +165,8 @@ class DataProcessor:
                 phone_number=phone_number,
                 email=email,
                 appointment_datetime=appointment_datetime,
-                row_index=row_index
+                row_index=row_index,
+                location=location
             )
             
         except Exception as e:

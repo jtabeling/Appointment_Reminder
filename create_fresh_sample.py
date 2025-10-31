@@ -12,13 +12,15 @@ sample_appointments = [
         'name': 'Test User',
         'phone_number': 'your_cell_phone_here',  # User will update this
         'email': 'test@example.com',
-        'appointment_date': now + timedelta(days=1) + timedelta(hours=2)  # Tomorrow + 2 hours
+        'appointment_date': now + timedelta(days=1) + timedelta(hours=2),  # Tomorrow + 2 hours
+        'location': 'Main Office'
     },
     {
         'name': 'Test User 2',
         'phone_number': 'your_cell_phone_here',
         'email': 'test2@example.com',
-        'appointment_date': now + timedelta(days=2)  # Day after tomorrow
+        'appointment_date': now + timedelta(days=2),  # Day after tomorrow
+        'location': 'Downtown Branch'
     },
 ]
 

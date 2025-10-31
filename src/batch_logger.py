@@ -37,6 +37,7 @@ class BatchLogger:
                     'name',
                     'phone_number',
                     'appointment_date',
+                    'location',
                     'call_answered',
                     'call_status',
                     'call_duration_seconds',
@@ -59,6 +60,7 @@ class BatchLogger:
                 - name: Person's name
                 - phone_number: Phone number called
                 - appointment_date: Appointment date/time
+                - location: Appointment location (optional)
                 - answered: Boolean indicating if call was answered
                 - status: Call status from Twilio
                 - duration: Duration in seconds
@@ -81,6 +83,7 @@ class BatchLogger:
                     result.get('name', ''),
                     result.get('phone_number', ''),
                     result.get('appointment_date', ''),
+                    result.get('location', ''),
                     'Yes' if result.get('answered', False) else 'No',
                     result.get('status', ''),
                     duration_seconds,

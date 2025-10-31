@@ -140,7 +140,7 @@ class AppointmentReminderApp:
         calls_placed = 0
         message_template = self.config.get(
             'message.message_template',
-            "Hello {name}, this is an automated reminder that you have an appointment scheduled for {appointment_date} at {appointment_time}. If you need to reschedule, please contact us. Thank you."
+            "Hello {name}, this is an automated reminder that you have an appointment scheduled for {appointment_date} at {appointment_time}{location_text}. If you need to reschedule, please contact us. Thank you."
         )
         
         # Track batch results for logging
@@ -152,11 +152,15 @@ class AppointmentReminderApp:
                 # Format message
                 appointment_date = apt.appointment_datetime.strftime("%B %d, %Y")
                 appointment_time = apt.appointment_datetime.strftime("%I:%M %p")
+                location = apt.location or ""
+                location_text = f", at the {location}" if location else ""
                 
                 message = message_template.format(
                     name=apt.name,
                     appointment_date=appointment_date,
-                    appointment_time=appointment_time
+                    appointment_time=appointment_time,
+                    location=location,
+                    location_text=location_text
                 )
                 
                 # Place the call immediately
@@ -182,6 +186,7 @@ class AppointmentReminderApp:
                         'name': apt.name,
                         'phone_number': apt.phone_number,
                         'appointment_date': apt.appointment_datetime.isoformat(),
+                        'location': apt.location or '',
                         'answered': self._is_call_answered(result.status),
                         'status': result.status,
                         'duration': result.duration,
@@ -197,6 +202,7 @@ class AppointmentReminderApp:
                         'name': apt.name,
                         'phone_number': apt.phone_number,
                         'appointment_date': apt.appointment_datetime.isoformat(),
+                        'location': apt.location or '',
                         'answered': False,
                         'status': 'error',
                         'duration': 0,

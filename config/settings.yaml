@@ -43,6 +43,8 @@ logging:
 # Message Content
 message:
   # Text-to-speech message template
-  # {name}, {appointment_date}, {appointment_time} will be replaced
-  message_template: "Hello {name}, this is an automated reminder that you have an appointment scheduled for {appointment_date} at {appointment_time}. If you need to reschedule, please contact us. Thank you."
+  # {name}, {appointment_date}, {appointment_time}, {location}, {location_text} will be replaced
+  # {location_text} includes " at [location]" if location exists, otherwise empty string
+  # {location} is the raw location value (empty string if not provided)
+  message_template: "Hello {name}, this is Jerry from the AARP TaxAide program calling with a reminder that you have an appointment scheduled for {appointment_date} at {appointment_time}{location_text}. If you need to reschedule, please contact us. Thank you."
 
