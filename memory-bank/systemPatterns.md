@@ -12,7 +12,7 @@ The system follows a modular architecture with clear separation of concerns:
 
 ### Data Flow
 ```
-Excel File → Data Processor → Appointments → Immediate Call → TwiML Function → Twilio → Phone → CSV Log
+Excel File (with location) → Data Processor → Appointments (with location) → Immediate Call (message includes location) → TwiML Function → Twilio → Phone → CSV Log (includes location)
 ```
 
 ### Error Handling
@@ -36,9 +36,10 @@ Excel File → Data Processor → Appointments → Immediate Call → TwiML Func
 
 ### DataProcessor Class
 - Reads Excel files
-- Validates required columns
+- Validates required columns (name, phone_number, email, appointment_date)
+- Optional location column support
 - Parses dates and times
-- Returns structured appointment data
+- Returns structured appointment data with location
 
 ### Caller Class
 - Authenticates with Twilio API
@@ -51,6 +52,7 @@ Excel File → Data Processor → Appointments → Immediate Call → TwiML Func
 
 ### BatchLogger Class
 - Logs all call results to CSV
+- Includes location data in CSV output
 - Tracks call outcomes (answered, duration, status)
 - Formatted output for easy analysis
 - Timestamp and batch tracking

@@ -14,12 +14,13 @@ Tax offices need to reduce no-shows by sending automated appointment reminders t
 4. Configurable: Adjust timing and other parameters as needed
 
 ## Key Features
-- Bulk processing of appointments from Excel
-- Automated scheduling of reminder calls
+- Bulk processing of appointments from Excel (with optional location field)
+- Automated reminder calls with location information
 - Twilio/Voice integration for placing calls
-- Custom TwiML messages with appointment details
+- Custom TwiML messages with appointment details and location
+- Personalized message templates (AARP TaxAide program)
 - Immediate call mode for instant reminders
-- Detailed logging and reporting
+- Detailed logging and reporting (includes location in CSV)
 - Error recovery and retry logic
 - Production ready deployment
 
